@@ -14,10 +14,11 @@ const fm = require('./FindMeldSets');
 const fd = require('./Damage')
 
 const BLM_JOBMOD = 115;
+
+// Tome solve functionality not yet tested
 const USE_TOMES = 0;
 const MAX_TOMES = 900;
 const MIN_TOMES = 750;
-//const OUTPUTBIGMELDS = true // Forces the output to big melds, does not change the program logic. Set to false when using small and big melds.
 
 const LOGNUM = 100; // log every LOGNUM sets, or every 1% of progress, whichever is less logging
 /** 
@@ -26,24 +27,46 @@ const LOGNUM = 100; // log every LOGNUM sets, or every 1% of progress, whichever
 * Finally, outputs all the sets within BISTHRESH of the best, using an update of Furst's model.
 * Allowing full overmelds impacts performance severely.
 */
-function findBisSets(filename, lvl, bisThresh, bigMeldFlag, smeldVal, meldMult){
+function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
   var baseint = 0;
   var eno = 1.0;
   var basestats = [0, 0, 0, 0];
-  var meldVal = smeldVal*meldMult;
+  //var meldVal = smeldVal*meldMult;
 
   //Determine base stats from level
+  //base stats are Det, DH, Crit, SS
+  //baseint assumes Midlander
   switch (lvl) {
+    case 70:
+      baseint = 338;
+      var basestats = [292, 364, 364, 364];
+      eno = 1.15;
+      //Materia at this level is actually +6/+16, which means bigmeld is NOT an integer multiple of smallmeld
+      //Hence DO NOT solve for small melds at level 70
+      smeldVal = 8;
+      meldMult = 2;
+      break;
+    case 80:
+      baseint = 394;
+      var basestats = [340, 380, 380, 380];
+      eno = 1.15;
+      smeldVal = 8;
+      meldMult = 3;
+      break;
     case 90:
       baseint = 451;
       var basestats = [390, 400, 400, 400];
       eno = 1.25;
+      smeldVal = 12;
+      meldMult = 3;
       break;
     default:
     case 100:
       baseint = 509;
       var basestats = [440, 420, 420, 420];
       eno = 1.33;
+      smeldVal = 18;
+      meldMult = 3;
       break;
   }
 
