@@ -1,5 +1,5 @@
 // BLM Traits
-const magicAndMend = 1.3;
+const maimAndMend = 1.3;
 
 /**
  * Damage Formula
@@ -12,7 +12,7 @@ function Damage(Potency, WD, JobMod, MainStat, Det, Crit, DH, lvl, eno) {
   let Damage = Math.floor(Potency * (WD + Math.floor(main * JobMod / 1000)) * (100 + Math.floor((MainStat - main) * M / main)) / 100);
   Damage = Math.floor(Damage * (1000 + Math.floor(140 * (Det - main) / div)) / 1000);
   Damage = Math.floor(Damage / 100);
-  Damage = Math.floor(Damage * magicAndMend); //BLM traits
+  Damage = Math.floor(Damage * maimAndMend); //BLM traits
   Damage = Math.floor(Damage * eno); //BLM traits
   const CritDamage = Math.floor(Damage * (1000 * CalcCritDamage(Crit, sub, div)) / 1000);
   const DHDamage = Math.floor(Damage * 1250 / 1000);
@@ -51,7 +51,7 @@ function getLvlMod(lvl) {
     case 100:
       ret.main = 440;
       ret.sub = 420;
-      ret.M = 195;
+      ret.M = 237;
       ret.div = 2780;
     default:
       ret.main = 440;
