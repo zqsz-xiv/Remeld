@@ -9,4 +9,3 @@ Download all .js files and open "RunBisSolve.js" to set parameters before runnin
 
 ## Known Issues:
 - Damage formula rounding means that simulated damage will not be perfectly consistent with the game, nor other gear solvers.
-- FPS tax is missing from PPS calculation.
