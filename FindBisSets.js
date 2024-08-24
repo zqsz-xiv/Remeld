@@ -40,7 +40,7 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
     case 70:
       baseint = 338;
       var basestats = [292, 364, 364, 364];
-      eno = 1.15;
+      eno = 1.10;
       //Materia at this level is actually +6/+16, which means bigmeld is NOT an integer multiple of smallmeld
       //Hence DO NOT solve for small melds at level 70
       smeldVal = 8;

@@ -140,7 +140,7 @@ function newBLMThunderPps80(sps) {
   let T3 = 120;
   let T3Dot = 50;
   let F4Rotation = fastF3B3 * 2 + B4 + F1 + F4 * 6 + Desp;
-  let MFCd = 100;
+  let MFCd = 120;
 
   let fProcNum = 0.4;
 
@@ -186,7 +186,7 @@ function newBLMThunderPps70(sps) {
   let T3 = 120;
   let T3Dot = 50;
   let F4Rotation = fastF3B3 * 2 + B4 + F1 + F4 * 6 + Desp;
-  let MFCd = 100;
+  let MFCd = 120;
 
   let fProcNum = 0.4;
 
