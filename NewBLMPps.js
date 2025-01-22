@@ -43,7 +43,7 @@ function GcdCalc(gcd, sps, llFlag, lvl) {
 //    4 thunder = 4 shortgcd + 4 (1-tprocNum)* casterTax
 //    leylines and 8 instant casts
 // which means it takes ((30/0.85 + 90) + 8*instantGain - 1longGcd - 9 shortGcd - 1 despGcd - (6 - 4 tProcNum) casterTax) of base (ice/fire) rotation to generate all this and spend 120 actual seconds
-function newBLMThunderPps(sps) {  
+function newBLMThunderPps_pre7_1(sps) {  
   let casterTax = 0.12; // 0.1 + 2/fps
   let fastF3B3 = 0.7*280;
   let B4 = 320;
@@ -74,6 +74,49 @@ function newBLMThunderPps(sps) {
 
   let cycleTime = (30/0.85 + 90) + instantGain9
   cycleTime += -(120/MFCd)*(2 * shortGcd + 6 * longGcd + 2 * despGcd + 8 * casterTax) //Manafont fire phase
+  cycleTime += -5*shortGcd //4 Xeno + 1 Amp
+
+  let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
+  let xenoP = nCycles*5*Xeno;
+  let mfP = nCycles*(F3P + Para + F4 * 6 + Desp + FS);
+  let thunderP = nCycles*4*(HT + 10*SpsScalar(sps, 100)*HTDot); // T3p is not affected by sps scalar
+  let potency = 4 * (F4Rotation) + xenoP + mfP + thunderP;
+  let time = nCycles*120; 
+  return potency/time;
+}
+
+function newBLMThunderPps(sps) {  
+  let casterTax = 0.12; // 0.1 + 2/fps
+  let fastF3B3 = 0.7*280;
+  let B4 = 320;
+  let Xeno = 880;
+  let F3P = 1.8*280;
+  let F4 = 1.8*320;
+  let Desp = 1.8*350;
+  let Para = 520;
+  let HT = 150;
+  let HTDot = 60;
+  var FS = 1.8*400;
+  let F4Rotation = fastF3B3 + B4 + F3P + 2*Para + F4 * 6 + Desp + FS;
+  let MFCd = 100;
+
+  let shortGcd = GcdCalc(2500, sps, false, 100)
+  let longGcd = GcdCalc(2800, sps, false, 100)
+  let flareGcd = GcdCalc(3000, sps, false, 100)
+  let instantGain9 = (3*(flareGcd+casterTax-shortGcd) + 6*(longGcd+casterTax-shortGcd)); // assume triple on F4/F4/FS x2 + swift on 3xF4/1xFS
+  //Limiting factor is the number of Flare Stars possible in 2min. May want to improve this
+  
+  let fastB3F3Clips = Math.max((70 - Math.max(100*GcdCalc(2500,sps, false, 100),150) + Math.floor(100*0.5*GcdCalc(3500, sps, false, 100))),0)/100
+  let fastB3F3ClipsLL = Math.max((70 - Math.max(100*GcdCalc(2500,sps, true, 100),150) + Math.floor(100*0.5*GcdCalc(3500, sps, true, 100))),0)/100
+  // short gcds = 4 * (6; B4, 2* Para, 2* fastcast F3/B3, instant Desp)
+  // long gcds = 4 * 6 F4s
+  // caster tax = 4 * (8; b4, 6F4, FS)
+
+  let baseTime = 24 * shortGcd + 24 * longGcd + 4 * flareGcd; // why are we doing 4 loops? vestigial, it doesn't matter.
+  baseTime += 1*fastB3F3Clips + 1*fastB3F3ClipsLL  + 32 * casterTax;
+
+  let cycleTime = (30/0.85 + 90) + instantGain9
+  cycleTime += -(120/MFCd)*(3 * shortGcd + 6 * longGcd + 1 * flareGcd + 7 * casterTax) //Manafont fire phase
   cycleTime += -5*shortGcd //4 Xeno + 1 Amp
 
   let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
