@@ -9,6 +9,8 @@ function BLMThunderPps (sps, lvl) {
       return newBLMThunderPps80(sps);
     case 90:
       return newBLMThunderPps90(sps);
+    case 100:
+      return newBLMThunderPps(sps);
     default:
       return newBLMThunderPps(sps); 
   }
@@ -43,48 +45,6 @@ function GcdCalc(gcd, sps, llFlag, lvl) {
 //    4 thunder = 4 shortgcd + 4 (1-tprocNum)* casterTax
 //    leylines and 8 instant casts
 // which means it takes ((30/0.85 + 90) + 8*instantGain - 1longGcd - 9 shortGcd - 1 despGcd - (6 - 4 tProcNum) casterTax) of base (ice/fire) rotation to generate all this and spend 120 actual seconds
-function newBLMThunderPps_pre7_1(sps) {  
-  let casterTax = 0.12; // 0.1 + 2/fps
-  let fastF3B3 = 0.7*280;
-  let B4 = 320;
-  let Xeno = 880;
-  let F3P = 1.8*280;
-  let F4 = 1.8*320;
-  let Desp = 1.8*350;
-  let Para = 520;
-  let HT = 150;
-  let HTDot = 60;
-  var FS = 1.8*400;
-  let F4Rotation = fastF3B3 + B4 + F3P + 2*Para + F4 * 6 + Desp + FS;
-  let MFCd = 100;
-
-  let shortGcd = GcdCalc(2500, sps, false, 100)
-  let longGcd = GcdCalc(2800, sps, false, 100)
-  let despGcd = GcdCalc(3000, sps, false, 100)
-  let instantGain9 = (4*(despGcd+casterTax-shortGcd) + 5*(longGcd+casterTax-shortGcd)); // assume triple on F4/Desp/FS x2 + 3x swift on F4
-  
-  let fastB3F3Clips = Math.max((70 - Math.max(100*GcdCalc(2500,sps, false, 100),150) + Math.floor(100*0.5*GcdCalc(3500, sps, false, 100))),0)/100
-  let fastB3F3ClipsLL = Math.max((70 - Math.max(100*GcdCalc(2500,sps, true, 100),150) + Math.floor(100*0.5*GcdCalc(3500, sps, true, 100))),0)/100
-  // short gcds = 4 * (5; B4, 2* Para, 2* fastcast)
-  // long gcds = 4 * 6 F4s
-  // caster tax = 4 * (9; b4, 6F4, despair, FS)
-
-  let baseTime = 20 * shortGcd + 24 * longGcd + 8 * despGcd; // why are we doing 4 loops? vestigial, it doesn't matter.
-  baseTime += 1*fastB3F3Clips + 1*fastB3F3ClipsLL  + 36 * casterTax;
-
-  let cycleTime = (30/0.85 + 90) + instantGain9
-  cycleTime += -(120/MFCd)*(2 * shortGcd + 6 * longGcd + 2 * despGcd + 8 * casterTax) //Manafont fire phase
-  cycleTime += -5*shortGcd //4 Xeno + 1 Amp
-
-  let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
-  let xenoP = nCycles*5*Xeno;
-  let mfP = nCycles*(F3P + Para + F4 * 6 + Desp + FS);
-  let thunderP = nCycles*4*(HT + 10*SpsScalar(sps, 100)*HTDot); // T3p is not affected by sps scalar
-  let potency = 4 * (F4Rotation) + xenoP + mfP + thunderP;
-  let time = nCycles*120; 
-  return potency/time;
-}
-
 function newBLMThunderPps(sps) {  
   let casterTax = 0.12; // 0.1 + 2/fps
   let fastF3B3 = 0.7*280;
@@ -118,12 +78,54 @@ function newBLMThunderPps(sps) {
   let cycleTime = (30/0.85 + 90) + instantGain9
   cycleTime += -(120/MFCd)*(3 * shortGcd + 6 * longGcd + 1 * flareGcd + 7 * casterTax) //Manafont fire phase
   cycleTime += -5*shortGcd //4 Xeno + 1 Amp
+  cycleTime += -4*shortGcd //4 thunder refresh
 
   let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
   let xenoP = nCycles*5*Xeno;
   let mfP = nCycles*(F3P + Para + F4 * 6 + Desp + FS);
   let thunderP = nCycles*4*(HT + 10*SpsScalar(sps, 100)*HTDot); // T3p is not affected by sps scalar
   let potency = 4 * (F4Rotation) + xenoP + mfP + thunderP;
+  let time = nCycles*120; 
+  return potency/time;
+}
+
+//using live letter estimated numbers for now
+function newBLMThunderPps_liveletter(sps) {  
+  let fastF3B3 = 0.7*290;
+  let B4 = 300;
+  let Xeno = 890;
+  let F3P = 1.8*290;
+  let F4 = 1.8*300;
+  let Desp = 1.8*350;
+  let Para = 550;
+  let HT = 150;
+  let HTDot = 60;
+  var FS = 1.8*500;
+  let F4Rotation = fastF3B3 + B4 + F3P + 2*Para + F4 * 6 + Desp + FS;
+  let MFCd = 100;
+
+  let Gcd = GcdCalc(2500, sps, false, 100)
+  
+  // used to allow for clipping when weaving on fast F3 / B3 - do we still need to do this?
+  // let fastB3F3Clips = Math.max((70 - Math.max(100*GcdCalc(2500,sps, false, 100),150) + Math.floor(100*0.5*GcdCalc(3500, sps, false, 100))),0)/100
+  // let fastB3F3ClipsLL = Math.max((70 - Math.max(100*GcdCalc(2500,sps, true, 100),150) + Math.floor(100*0.5*GcdCalc(3500, sps, true, 100))),0)/100
+
+  let baseTime = 4*(13*Gcd); // why are we doing 4 loops? vestigial, it doesn't matter.
+  // B3 B4 Para F3p 6F4 Para Desp FS = 13 GCDs
+  // baseTime += 1*fastB3F3Clips + 1*fastB3F3ClipsLL;
+
+  let cycleTime = (20/0.85 + 100) //20 seconds spent under LL
+  cycleTime += -(120/MFCd)*(10*Gcd) //Assume 6F4 + Para + Desp + FS + F3p
+  cycleTime += -5*Gcd //4 Xeno + 1 Amp
+  cycleTime += -4*Gcd //4 thunder refresh
+
+  let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
+
+  let xenoP = nCycles*5*Xeno;
+  let mfP = nCycles*(F3P + Para + F4 * 6 + Desp + FS); //assume that we're still using the manafont F3p for now
+  let thunderP = nCycles*4*(HT + 10*SpsScalar(sps, 100)*HTDot); // T3p is not affected by sps scalar
+  let coldB3P = (290 - fastF3B3)*2; //gain from making 2 B3 casts instant in UI1 per 120s cycle - may want to review this later
+  let potency = 4 * (F4Rotation) + xenoP + mfP + thunderP + coldB3P;
   let time = nCycles*120; 
   return potency/time;
 }
@@ -150,15 +152,13 @@ function newBLMThunderPps90(sps) {
   
   let fastB3F3Clips = Math.max((70 - Math.max(100*GcdCalc(2500, sps, false, 90),150) + Math.floor(100*0.5*GcdCalc(3500, sps, false, 90))),0)/100
   let fastB3F3ClipsLL = Math.max((70 - Math.max(100*GcdCalc(2500, sps, true, 90),150) + Math.floor(100*0.5*GcdCalc(3500, sps, true, 90))),0)/100
-  // short gcds = 4 * (5; B4, 2* Para, 2* fastcast)
-  // long gcds = 4 * 6 F4s
-  // caster tax = 4 * (8; b4, 6F4, despair)
+
   let baseTime = 20 * shortGcd + 24 * longGcd + 4 * despGcd; // why are we doing 4 loops? vestigial, it doesn't matter.
   baseTime += 1*fastB3F3Clips + 1*fastB3F3ClipsLL  + 32 * casterTax;
   
   let cycleTime = (30/0.85 + 90) + instantGain8
   cycleTime += -(120/MFCd)*(2 * shortGcd + 6 * longGcd + 1 * despGcd + 7 * casterTax) //Manafont fire phase
-  cycleTime += -5*shortGcd //4 Xeno + 1 Amp
+  cycleTime += -9*shortGcd //4 Xeno + 1 Amp, 4 thunder refresh
 
   let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
   let xenoP = nCycles*5*Xeno;
@@ -203,6 +203,7 @@ function newBLMThunderPps80(sps) {
   let cycleTime = (30/0.85 + 90) + instantGain8
   cycleTime += -(120/MFCd)*(2 * shortGcd + 6 * longGcd + 1 * despGcd + 8 * casterTax) //Manafont fire phase
   cycleTime += -4*shortGcd //4 Xeno, no Amp
+  cycleTime += -4*shortGcd //4 thunder refresh
   cycleTime += -fProcNum*shortGcd // AF3 F3p cast
 
   let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
@@ -249,6 +250,7 @@ function newBLMThunderPps70(sps) {
   let cycleTime = (30/0.85 + 90) + instantGain8
   cycleTime += -(120/MFCd)*(2 * shortGcd + 6 * longGcd + 1 * despGcd + 7 * casterTax) //Manafont fire phase
   cycleTime += -4*(shortGcd + casterTax) //4 Foul hardcasts
+  cycleTime += -4*shortGcd //4 thunder refresh
   cycleTime += -fProcNum*shortGcd // AF3 F3p cast
 
   let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
