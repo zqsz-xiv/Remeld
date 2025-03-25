@@ -45,7 +45,7 @@ function GcdCalc(gcd, sps, llFlag, lvl) {
 //    4 thunder = 4 shortgcd + 4 (1-tprocNum)* casterTax
 //    leylines and 8 instant casts
 // which means it takes ((30/0.85 + 90) + 8*instantGain - 1longGcd - 9 shortGcd - 1 despGcd - (6 - 4 tProcNum) casterTax) of base (ice/fire) rotation to generate all this and spend 120 actual seconds
-function newBLMThunderPps(sps) {  
+function newBLMThunderPps_pre72(sps) {  
   let casterTax = 0.12; // 0.1 + 2/fps
   let fastF3B3 = 0.7*280;
   let B4 = 320;
@@ -90,14 +90,15 @@ function newBLMThunderPps(sps) {
 }
 
 //using live letter estimated numbers for now
-function newBLMThunderPps_liveletter(sps) {  
+function newBLMThunderPps(sps) {  
   let fastF3B3 = 0.7*290;
+  let coldB3 = 290;
   let B4 = 300;
   let Xeno = 890;
   let F3P = 1.8*290;
   let F4 = 1.8*300;
   let Desp = 1.8*350;
-  let Para = 550;
+  let Para = 540;
   let HT = 150;
   let HTDot = 60;
   var FS = 1.8*500;
@@ -124,7 +125,7 @@ function newBLMThunderPps_liveletter(sps) {
   let xenoP = nCycles*5*Xeno;
   let mfP = nCycles*(F3P + Para + F4 * 6 + Desp + FS); //assume that we're still using the manafont F3p for now
   let thunderP = nCycles*4*(HT + 10*SpsScalar(sps, 100)*HTDot); // T3p is not affected by sps scalar
-  let coldB3P = (290 - fastF3B3)*2; //gain from making 2 B3 casts instant in UI1 per 120s cycle - may want to review this later
+  let coldB3P = (coldB3 - fastF3B3)*3; //gain from making 3 B3 casts instant per 4 full standard lines
   let potency = 4 * (F4Rotation) + xenoP + mfP + thunderP + coldB3P;
   let time = nCycles*120; 
   return potency/time;
@@ -134,6 +135,7 @@ function newBLMThunderPps_liveletter(sps) {
 function newBLMThunderPps90(sps) {  
   let casterTax = 0.12; // 0.1 + 2/fps
   let fastF3B3 = 0.7*280;
+  let coldB3 = 290;
   let B4 = 320;
   let Xeno = 880;
   let F3P = 1.8*280;
@@ -164,8 +166,8 @@ function newBLMThunderPps90(sps) {
   let xenoP = nCycles*5*Xeno;
   let mfP = nCycles*(F3P + Para + F4 * 6 + Desp);
   let thunderP = nCycles*4*(T3 + 10*SpsScalar(sps, 90)*T3Dot); // T3p is not affected by sps scalar
-
-  let potency = 4 * (F4Rotation) + xenoP + mfP + thunderP;
+  let coldB3P = (coldB3 - fastF3B3)*3; //gain from making 3 B3 casts instant per 4 full standard lines
+  let potency = 4 * (F4Rotation) + xenoP + mfP + thunderP + coldB3P;
   let time = nCycles*120; 
   return potency/time;
 }

@@ -56,15 +56,15 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
     case 90:
       baseint = 451;
       var basestats = [390, 400, 400, 400];
-      eno = 1.25;
+      eno = 1.22;
       smeldVal = 12;
       meldMult = 3;
       break;
     default:
     case 100:
-      baseint = 509;
+      baseint = 505;
       var basestats = [440, 420, 420, 420];
-      eno = 1.32;
+      eno = 1.27;
       smeldVal = 18;
       meldMult = 3;
       break;
