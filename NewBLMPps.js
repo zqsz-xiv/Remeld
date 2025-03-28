@@ -1,4 +1,4 @@
-module.exports = {BLMThunderPps}
+module.exports = {BLMThunderPps, SpsScalar, GcdCalc}
 const fd = require('./Damage')
 
 function BLMThunderPps (sps, lvl) {
@@ -28,9 +28,12 @@ function SpsScalar(sps, lvl) {
 Determine GCD length, accounting for LL.
 TODO: Integrate research on 1/1000s precision for cast times greater than GCD. May need to account for FPS locking in more detail
 */
-function GcdCalc(gcd, sps, llFlag, lvl) {
+function GcdCalc(baseGCD, sps, llFlag, lvl) {
   const { sub, div } = fd.getLvlMod(lvl);
-  let time = Math.floor(Math.floor(1000 * (llFlag ? 85 : 100)  * (Math.floor(gcd * (1000 - Math.floor(130 * (sps-sub) / div))/1000) / 1000)) / 1000)/100;
+  //fixed GcdCalc from shanzhe
+  let ceil = Math.ceil(((sub - sps) * 130) / div);
+  let pts = Math.floor(baseGCD * (1000 + ceil));
+  let time = Math.floor(((llFlag ? 85 : 100) * pts) / 1000) / 100;
   return time;
 }
 
@@ -60,9 +63,9 @@ function newBLMThunderPps_pre72(sps) {
   let F4Rotation = fastF3B3 + B4 + F3P + 2*Para + F4 * 6 + Desp + FS;
   let MFCd = 100;
 
-  let shortGcd = GcdCalc(2500, sps, false, 100)
-  let longGcd = GcdCalc(2800, sps, false, 100)
-  let flareGcd = GcdCalc(3000, sps, false, 100)
+  let shortGcd = GcdCalc(2.5, sps, false, 100)
+  let longGcd = GcdCalc(2.8, sps, false, 100)
+  let flareGcd = GcdCalc(3.0, sps, false, 100)
   let instantGain9 = (3*(flareGcd+casterTax-shortGcd) + 6*(longGcd+casterTax-shortGcd)); // assume triple on F4/F4/FS x2 + swift on 3xF4/1xFS
   //Limiting factor is the number of Flare Stars possible in 2min. May want to improve this
   
@@ -105,7 +108,7 @@ function newBLMThunderPps(sps) {
   let F4Rotation = fastF3B3 + B4 + F3P + 2*Para + F4 * 6 + Desp + FS;
   let MFCd = 100;
 
-  let Gcd = GcdCalc(2500, sps, false, 100)
+  let Gcd = GcdCalc(2.5, sps, false, 100)
   
   // used to allow for clipping when weaving on fast F3 / B3 - do we still need to do this?
   // let fastB3F3Clips = Math.max((70 - Math.max(100*GcdCalc(2500,sps, false, 100),150) + Math.floor(100*0.5*GcdCalc(3500, sps, false, 100))),0)/100
@@ -147,9 +150,9 @@ function newBLMThunderPps90(sps) {
   let F4Rotation = fastF3B3 + B4 + F3P + 2*Para + F4 * 6 + Desp;
   let MFCd = 100;
 
-  let shortGcd = GcdCalc(2500, sps, false, 90)
-  let longGcd = GcdCalc(2800, sps, false, 90)
-  let despGcd = GcdCalc(3000, sps, false, 90)
+  let shortGcd = GcdCalc(2.5, sps, false, 90)
+  let longGcd = GcdCalc(2.8, sps, false, 90)
+  let despGcd = GcdCalc(3.0, sps, false, 90)
   let instantGain8 = (3*(despGcd+casterTax-shortGcd) + 5*(longGcd+casterTax-shortGcd)); // say, 3 despairs 5 f4s being instant
   
   let fastB3F3Clips = Math.max((70 - Math.max(100*GcdCalc(2500, sps, false, 90),150) + Math.floor(100*0.5*GcdCalc(3500, sps, false, 90))),0)/100
@@ -189,9 +192,9 @@ function newBLMThunderPps80(sps) {
 
   let fProcNum = 0.4;
 
-  let shortGcd = GcdCalc(2500, sps, false, 80)
-  let longGcd = GcdCalc(2800, sps, false, 80)
-  let despGcd = GcdCalc(3000, sps, false, 80)
+  let shortGcd = GcdCalc(2.5, sps, false, 80)
+  let longGcd = GcdCalc(2.8, sps, false, 80)
+  let despGcd = GcdCalc(3.0, sps, false, 80)
   let instantGain8 = (3*(despGcd+casterTax-shortGcd) + 5*(longGcd+casterTax-shortGcd)); // say, 3 despairs 5 f4s being instant
   
   let fastB3F3Clips = Math.max((70 - Math.max(100*GcdCalc(2500,sps, false, 80),150) + Math.floor(100*0.5*GcdCalc(3500, sps, false, 80))),0)/100
@@ -236,9 +239,9 @@ function newBLMThunderPps70(sps) {
 
   let fProcNum = 0.4;
 
-  let shortGcd = GcdCalc(2500, sps, false, 70)
-  let longGcd = GcdCalc(2800, sps, false, 70)
-  let despGcd = GcdCalc(3000, sps, false, 70)
+  let shortGcd = GcdCalc(2.500, sps, false, 70)
+  let longGcd = GcdCalc(2.800, sps, false, 70)
+  let despGcd = GcdCalc(3.000, sps, false, 70)
   let instantGain8 = 8*(longGcd+casterTax-shortGcd); // 8 f4s being instant
   
   let fastB3F3Clips = Math.max((70 - Math.max(100*GcdCalc(2500,sps, false, 70),150) + Math.floor(100*0.5*GcdCalc(3500, sps, false, 70))),0)/100
