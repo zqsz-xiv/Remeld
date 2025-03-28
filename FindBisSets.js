@@ -116,8 +116,8 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
   }
 
   // Sheet output: (Sps, [Det,DH,Crit,SS], Int, Small Melds, Pieces)
-  var output = [['Sps', 'Damage', '% of best', 'Det', 'DH', 'Crit', 'Int', 'Small Melds', 'Food', 'Pieces']];
-  if (bigMeldFlag) output = [['Sps', 'Damage', '% of best', 'Det', 'DH', 'Crit', 'Int', 'Melds', 'Food', 'Pieces']];
+  var output = [['Sps', 'Damage', '% of best', 'Det', 'DH', 'Crit', 'Int', 'Small Melds', ',,','Food', 'Pieces']];
+  if (bigMeldFlag) output = [['Sps', 'Damage', '% of best', 'Det', 'DH', 'Crit', 'Int', 'Melds', ',,','Food', 'Pieces']];
 
   for(let i in setList){
     var stats = getStats(setList[i][0], setList[i][1], setList[i][2], smeldVal);
