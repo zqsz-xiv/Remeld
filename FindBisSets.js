@@ -21,6 +21,8 @@ const MAX_TOMES = 900;
 const MIN_TOMES = 750;
 
 const LOGNUM = 100; // log every LOGNUM sets, or every 1% of progress, whichever is less logging
+const SET_STAT_DEDUP = false;
+
 /** 
 * Generates all possible gearSets from the data in the spreadsheet.
 * Then, for each gearSet, finds the optimal meldSets it produces. Combines the outputs, and produces the overall optimal meldSet for each sps value.
@@ -43,7 +45,9 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
       eno = 1.10;
       //Materia at this level is actually +6/+16, which means bigmeld is NOT an integer multiple of smallmeld
       //Hence DO NOT solve for small melds at level 70
-      smeldVal = 8;
+      //smeldVal = 8; //this is the actual value
+
+      smeldVal = 36; //hacked in to make downsynced relic weapon work
       meldMult = 2;
       break;
     case 80:
@@ -111,17 +115,19 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
       setList.push([bisSets.get(sps), bisMelds.get(sps), bisFoods.get(sps), currDmg, sps]);
     }
   }
-  for(let i in setList){
-    console.log("Sps " + setList[i][4] + ": \n" + setList[i][0].pieces + " \nMelds (maybe small): " + meldToString(setList[i][1], bigMeldFlag, meldMult) + "\nDamage: " + setList[i][3] + '(% of best: '+ setList[i][3]/bestDmg + ")\n[Det,DH,Crit,SS]: " + getStats(setList[i][0], setList[i][1], setList[i][2], smeldVal), setList[i][2] + '\nInt: ' + setList[i][0].int);
-  }
+  
+  //for(let i in setList){
+  //  console.log("Sps " + setList[i][4] + ": \n" + setList[i][0].pieces + " \nMelds (maybe small): " + meldToString(setList[i][1], bigMeldFlag, meldMult) + "\nDamage: " + setList[i][3] + '(% of best: '+ setList[i][3]/bestDmg + ")\n[Det,DH,Crit,SS]: " + getStats(setList[i][0], setList[i][1], setList[i][2], smeldVal), setList[i][2] + '\nInt: ' + setList[i][0].int);
+  //}
 
   // Sheet output: (Sps, [Det,DH,Crit,SS], Int, Small Melds, Pieces)
-  var output = [['Sps', 'Damage', '% of best', 'Det', 'DH', 'Crit', 'Int', 'Small Melds', ',,','Food', 'Pieces']];
-  if (bigMeldFlag) output = [['Sps', 'Damage', '% of best', 'Det', 'DH', 'Crit', 'Int', 'Melds', ',,','Food', 'Pieces']];
+  var output = [['Sps', 'Damage', '% of best', 'GCD', 'Det', 'DH', 'Crit', 'Int', 'Small Melds', ',,','Food', 'Pieces']];
+  if (bigMeldFlag) output = [['Sps', 'Damage', '% of best', 'GCD', 'Det', 'DH', 'Crit', 'Int', 'Melds', ',,','Food', 'Pieces']];
 
   for(let i in setList){
     var stats = getStats(setList[i][0], setList[i][1], setList[i][2], smeldVal);
-    output.push([setList[i][4], setList[i][3], 100.0*setList[i][3]/bestDmg, stats[0], stats[1], stats[2], setList[i][0].int, meldToString(setList[i][1], bigMeldFlag, meldMult), setList[i][2].name, setList[i][0].pieces.toString()]);
+    output.push([setList[i][4], setList[i][3], 100.0*setList[i][3]/bestDmg, fp.GcdCalc(2.5, setList[i][4], false, lvl)
+      ,stats[0], stats[1], stats[2], setList[i][0].int, meldToString(setList[i][1], bigMeldFlag, meldMult), setList[i][2].name, setList[i][0].pieces.toString()]);
   }
   return output;
 }
@@ -240,11 +246,27 @@ function loadGearSets(filename, baseint, basestats, allowFullOvermelds, smeldVal
     console.log('Sets satisfying tomes constraints: ' + preSets.length);
   }
 
-  var gearSets = preSets.map(preSet => {
-    gearSet = new GearSet(baseint, basestats);
-    preSet.forEach(piece => gearSet.addPiece(piece));
-    return gearSet;
-  });
+  if (SET_STAT_DEDUP){
+    console.log('Starting cull from sets: ' + preSets.length);
+    statCombos = new Set();
+    gearSets = [];
+    for (let i = 0; i < preSets.length; i++) {
+      gearSet = new GearSet(baseint, basestats);
+      preSets[i].forEach(piece => gearSet.addPiece(piece));
+      if (!statCombos.has(gearSet.stats)) {
+        statCombos.add(gearSet.stats);
+        gearSets.push(gearSet);
+      }
+    }
+    console.log('Finished cull with sets: ' + gearSets.length);
+  } else {
+    var gearSets = preSets.map(preSet => {
+      gearSet = new GearSet(baseint, basestats);
+      preSet.forEach(piece => gearSet.addPiece(piece));
+      return gearSet;
+    });
+  }
+
   return [gearSets, pieces.get('Food')];
 }
 

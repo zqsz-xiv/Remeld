@@ -92,7 +92,7 @@ function newBLMThunderPps_pre72(sps) {
   return potency/time;
 }
 
-//using live letter estimated numbers for now
+//new model for 7.2 rework
 function newBLMThunderPps(sps) {  
   let fastF3B3 = 0.7*290;
   let coldB3 = 290;
@@ -160,7 +160,7 @@ function newBLMThunderPps90(sps) {
   // baseTime += 1*fastB3F3Clips + 1*fastB3F3ClipsLL;
 
   let cycleTime = (20/0.85 + 100); //20 seconds spent under LL
-  cycleTime += -(120/MFCd)*(10*Gcd); //Assume 6F4 + Para + Desp + F3p
+  cycleTime += -(120/MFCd)*(9*Gcd); //Assume 6F4 + Para + Desp + F3p
   cycleTime += -5*Gcd; //4 Xeno + 1 Amp
   cycleTime += -4*Gcd; //4 thunder refresh
 
@@ -168,7 +168,7 @@ function newBLMThunderPps90(sps) {
 
   let xenoP = nCycles*5*Xeno;
   let mfP = nCycles*(F3P + Para + F4 * 6 + Desp); //manafont F3p is a gain at 90
-  let thunderP = nCycles*4*(T3 + 10*SpsScalar(sps, 100)*T3Dot); // T3p is not affected by sps scalar
+  let thunderP = nCycles*4*(T3 + 9*SpsScalar(sps, 100)*T3Dot); // T3p is not affected by sps scalar
   let coldB3P = nCycles*(coldB3 - fastF3B3)*3; //gain from making 3 B3 casts instant per 2 min loop
   let potency = 4 * (F4Rotation) + xenoP + mfP + thunderP + coldB3P;
   let time = nCycles*120; 
@@ -198,7 +198,7 @@ function newBLMThunderPps80(sps) {
   // baseTime += 1*fastB3F3Clips + 1*fastB3F3ClipsLL;
 
   let cycleTime = (20/0.85 + 100); //20 seconds spent under LL
-  cycleTime += -(120/MFCd)*(10*Gcd); //Assume 6F4 + Para + Desp + FS + F3p
+  cycleTime += -(120/MFCd)*(9*Gcd); //Assume 7F4 + Desp + F3p
   cycleTime += -4*Gcd; //4 Xeno no Amp
   cycleTime += -4*Gcd; //4 thunder refresh
   cycleTime += 2*Gcd;  //2 F4 lost from triplecast UI phase
@@ -206,8 +206,8 @@ function newBLMThunderPps80(sps) {
   let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
 
   let xenoP = nCycles*4*Xeno;
-  let mfP = nCycles*(F3P + Para + F4 * 7 + Desp); //manafont F3p is a gain at 80
-  let thunderP = nCycles*4*(T3 + 10*SpsScalar(sps, 100)*T3Dot); // T3p is not affected by sps scalar
+  let mfP = nCycles*(F3P + F4 * 7 + Desp); //manafont F3p is a gain at 80
+  let thunderP = nCycles*4*(T3 + 9*SpsScalar(sps, 100)*T3Dot); // T3p is not affected by sps scalar
   let instantB3P = nCycles*(coldB3 - fastF3B3); //gain from making 1 B3 cast instant per 2 min cycle
   //do 1 triplecast ice phase per 2min cycle (cold B3, B4, hot F3)
   let tripleUIP = nCycles*(coldB3 + hotF3 - 2*fastF3B3 - 2*F4);
@@ -227,22 +227,22 @@ function newBLMThunderPps70(sps) {
   let T3 = 120;
   let T3Dot = 50;
   let F4Rotation = fastF3B3 + B4 + fastF3B3 + F4 * 7 ;
-  let MFCd = 100;
+  let MFCd = 120;
 
   let Gcd = GcdCalc(2.5, sps, false, 100)
 
   let baseTime = 4*(10*Gcd); // why are we doing 4 loops? vestigial, it doesn't matter.
 
   let cycleTime = (20/0.85 + 100) //20 seconds spent under LL
-  cycleTime += -(120/MFCd)*(10*Gcd) //Assume 6F4 + Para + Desp + FS + F3p
+  cycleTime += -(120/MFCd)*(8*Gcd) //Assume 7F4 + F3p
   cycleTime += -4*Gcd //4 Xeno no Amp
   cycleTime += -4*Gcd //4 thunder refresh
 
   let nCycles = baseTime/cycleTime; // how many 120s cycles we actually did
 
   let xenoP = nCycles*4*Foul;
-  let mfP = nCycles*(F3P + Para + F4 * 7); //assume that we're still using the manafont F3p for now
-  let thunderP = nCycles*4*(T3 + 10*SpsScalar(sps, 100)*T3Dot); // T3p is not affected by sps scalar
+  let mfP = nCycles*(F3P + F4 * 7); //assume that we're still using the manafont F3p for now
+  let thunderP = nCycles*4*(T3 + 9*SpsScalar(sps, 100)*T3Dot); // T3p is not affected by sps scalar
 
   //Assume no cold B3 or hot F3 line at level 70 due to lack of instants
   //let coldB3P = (coldB3 - fastF3B3)*2; //gain from making 2 B3 casts instant per 4 full standard lines
