@@ -21,7 +21,6 @@ const MAX_TOMES = 900;
 const MIN_TOMES = 750;
 
 const LOGNUM = 100; // log every LOGNUM sets, or every 1% of progress, whichever is less logging
-const SET_STAT_DEDUP = false;
 
 /** 
 * Generates all possible gearSets from the data in the spreadsheet.
@@ -29,7 +28,7 @@ const SET_STAT_DEDUP = false;
 * Finally, outputs all the sets within BISTHRESH of the best, using an update of Furst's model.
 * Allowing full overmelds impacts performance severely.
 */
-function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
+function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicMeldOverride){
   var baseint = 0;
   var eno = 1.0;
   var basestats = [0, 0, 0, 0];
@@ -45,17 +44,24 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
       eno = 1.10;
       //Materia at this level is actually +6/+16, which means bigmeld is NOT an integer multiple of smallmeld
       //Hence DO NOT solve for small melds at level 70
-      //smeldVal = 8; //this is the actual value
-
-      smeldVal = 36; //hacked in to make downsynced relic weapon work
-      meldMult = 2;
+      
+      smeldVal = 8; 
+      if (!relicMeldOverride){
+        meldMult = 2; 
+      } else {
+        meldMult = 9;
+      }
       break;
     case 80:
       baseint = 394;
       var basestats = [340, 380, 380, 380];
       eno = 1.15;
       smeldVal = 8;
-      meldMult = 3;
+      if (!relicMeldOverride){
+        meldMult = 3; 
+      } else {
+        meldMult = 9;
+      }
       break;
     case 90:
       baseint = 451;
@@ -74,7 +80,12 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag){
       break;
   }
 
-  var [gearSets, foodList] = loadGearSets(filename, baseint, basestats, false, smeldVal, meldMult); 
+  if (setStatDedup) {
+    var [gearSets, foodList] = loadGearSets_StatDedup(filename, baseint, basestats, false, smeldVal, meldMult); 
+  } else {
+    var [gearSets, foodList] = loadGearSets(filename, baseint, basestats, false, smeldVal, meldMult); 
+  }
+
   console.log('Loaded ' + gearSets.length + ' gearsets.');
   console.log(foodList);
   //for(let i = 0; i < 10; i++) console.log(gearSets[i]);
@@ -246,29 +257,146 @@ function loadGearSets(filename, baseint, basestats, allowFullOvermelds, smeldVal
     console.log('Sets satisfying tomes constraints: ' + preSets.length);
   }
 
-  if (SET_STAT_DEDUP){
-    console.log('Starting cull from sets: ' + preSets.length);
-    statCombos = new Set();
-    gearSets = [];
-    for (let i = 0; i < preSets.length; i++) {
-      gearSet = new GearSet(baseint, basestats);
-      preSets[i].forEach(piece => gearSet.addPiece(piece));
-      if (!statCombos.has(gearSet.stats)) {
-        statCombos.add(gearSet.stats);
-        gearSets.push(gearSet);
-      }
-    }
-    console.log('Finished cull with sets: ' + gearSets.length);
-  } else {
-    var gearSets = preSets.map(preSet => {
-      gearSet = new GearSet(baseint, basestats);
-      preSet.forEach(piece => gearSet.addPiece(piece));
-      return gearSet;
-    });
-  }
+  var gearSets = preSets.map(preSet => {
+    gearSet = new GearSet(baseint, basestats);
+    preSet.forEach(piece => gearSet.addPiece(piece));
+    return gearSet;
+  });
 
   return [gearSets, pieces.get('Food')];
 }
+
+function loadGearSets_StatDedup(filename, baseint, basestats, allowFullOvermelds, smeldVal, meldMult){
+
+  var data = fs.readFileSync(filename)
+    .toString() // convert Buffer to string
+    .split('\n') // split string to lines
+    .map(e => e.trim()) // remove white spaces for each line
+    .map(e => e.split(',').map(e => e.trim())); // split each line to array
+
+
+  var pieces = new Map();
+  for (i in data) {
+    if (data[i][0] != 'Name'){
+      const piece = new Piece(data[i][0], data[i][1], parseInt(data[i][2]), parseInt(data[i][3]), parseInt(data[i][4]),
+      parseInt(data[i][5]), data[i][6], parseInt(data[i][7]), data[i][8], parseInt(data[i][9]), smeldVal, meldMult);
+      if (USE_TOMES) piece.tomes = data[i][10];
+      if (!pieces.has(piece.slot)) pieces.set(piece.slot, []);
+      pieces.get(piece.slot).push(piece);
+      if (allowFullOvermelds && piece.canOvermeld()){
+        pieces.get(piece.slot).push(piece.overmeld());
+      }
+    }
+  }
+  
+  //First stat group: chest / legs
+  var partSetsMajor = [];
+  var chests = pieces.get('Chest');
+  var legs = pieces.get('Legs');
+  var statCombos = [];
+  for (let i = 0; i < chests.length; i++) {
+    for (let j = 0; j < legs.length; j++) {
+      gs = new GearSet(baseint, basestats);
+      gs.addPiece(chests[i]);
+      gs.addPiece(legs[j]);
+      if (!arraysDuplicateCheck(statCombos, gs.stats)) {
+        statCombos.push(gs.stats);
+        partSetsMajor.push(gs);
+      }
+    }
+  }
+  console.log('Loaded Chest/Legs Combinations: ' + partSetsMajor.length);
+
+  //second stat group: head / hands / feet
+  var partSetsMinor = [];
+  var heads = pieces.get('Head');
+  var hands = pieces.get('Hands');
+  var feet = pieces.get('Feet');
+  var statCombos = [];
+  for (let i = 0; i < heads.length; i++) {
+    for (let j = 0; j < hands.length; j++) {
+      for (let k = 0; k < feet.length; k++) {
+        gs = new GearSet(baseint, basestats);
+        gs.addPiece(heads[i]);
+        gs.addPiece(hands[j]);
+        gs.addPiece(feet[k]);
+        if (!arraysDuplicateCheck(statCombos, gs.stats)) {
+          statCombos.push(gs.stats);
+          partSetsMinor.push(gs);
+        }
+      }
+    }
+  }
+  console.log('Loaded Head/Hands/Feet Combinations: ' + partSetsMinor.length);
+
+  //third stat group: accessories
+  var partSetsAccessories = [];
+  var ears = pieces.get('Ear');
+  var necks = pieces.get('Neck');
+  var wrists = pieces.get('Wrist');
+  var fingers = pieces.get('Finger');
+  var statCombos = [];
+  for (let i = 0; i < ears.length; i++) {
+    for (let j = 0; j < necks.length; j++) {
+      for (let k = 0; k < wrists.length; k++) {
+        for (let m = 0; m < fingers.length; m++) {
+          for (let n = m + 1; n < fingers.length; n++) {
+            if (!fingers[m].name.includes(fingers[n].name)) {
+              gs = new GearSet(baseint, basestats);
+              gs.addPiece(ears[i]);
+              gs.addPiece(necks[j]);
+              gs.addPiece(wrists[k]);
+              gs.addPiece(fingers[m]);
+              gs.addPiece(fingers[n]);
+              if (!arraysDuplicateCheck(statCombos, gs.stats)) {
+                statCombos.push(gs.stats);
+                partSetsAccessories.push(gs);
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+  console.log('Loaded Accessory Combinations: ' + partSetsAccessories.length);
+  console.log('All pieces loaded. Total combinations expected: ' + partSetsMajor.length*partSetsMinor.length*partSetsAccessories.length*pieces.get('Weapon').length);
+
+
+
+  // var gearSets = preSets.map(preSet => {
+  //   gearSet = new GearSet(baseint, basestats);
+  //   preSet.forEach(piece => gearSet.addPiece(piece));
+  //   return gearSet;
+  // });
+  var gearSets = [];
+  for (let i = 0; i < partSetsMajor.length; i++) {
+    for (let j = 0; j < partSetsMinor.length; j++) {
+      for (let k = 0; k < partSetsAccessories.length; k++) {
+        for (let m = 0; m < pieces.get('Weapon').length; m++) {
+        gs = new GearSet(baseint, basestats);
+        gs.addGearSet(partSetsMajor[i], baseint, basestats);
+        gs.addGearSet(partSetsMinor[j], baseint, basestats);
+        gs.addGearSet(partSetsAccessories[k], baseint, basestats);
+        gs.addPiece(pieces.get('Weapon')[m]);
+        
+        //Hacked in logic to handle MDville weapon bonus stats
+        var n = pieces.get('Weapon')[m].name.length;
+        if (pieces.get('Weapon')[m].name.substring(n-1) == "#") {
+          gs.stats[parseInt(pieces.get('Weapon')[m].name.substring(n-2))] += 72;
+        }
+        
+        gearSets.push(gs);
+        }
+      }
+    }
+  }
+
+  
+
+
+  return [gearSets, pieces.get('Food')];
+}
+
 
 /**
  * A piece has a primary and secondary stat type names, a slot that it fills, and a number of melds. Each piece knows its possible meld configurations.
@@ -317,15 +445,15 @@ class Piece{
  * A gear set has an amount of stats and pieces.
  * Note that stats start at base.
  */
-class GearSet{
-  constructor(baseint, basestats){
+class GearSet {
+  constructor(baseint, basestats) {
     this.int = baseint;
     this.wd = 0;
     this.stats = basestats.slice();
-    this.pieces = []; 
+    this.pieces = [];
     this.pieceMeldConfigs = [];
   }
-  addPiece(piece){
+  addPiece(piece) {
     this.pieces.push(piece.name);
     this.pieceMeldConfigs.push(piece.meldConfigs);
     this.int += piece.int;
@@ -333,7 +461,19 @@ class GearSet{
     this.stats[getStatNum(piece.primary)] += piece.primVal;
     this.stats[getStatNum(piece.secondary)] += piece.secVal;
   }
+  addGearSet(gs, baseint, basestats) {
+    for (var j = 0; j < gs.pieces.length; j++) {
+      this.pieces.push(gs.pieces[j])
+      this.pieceMeldConfigs.push(gs.pieceMeldConfigs[j])
+    }
+    this.int += gs.int - baseint;
+    this.wd += gs.wd;
+    for (var i = 0; i < 4; i++) {
+      this.stats[i] += gs.stats[i] - basestats[i];
+    }
+  }
 }
+
 
 function getStatNum(stat){
   switch(stat){
@@ -347,4 +487,21 @@ function getStatNum(stat){
     default:
       return 3; 
   }
+}
+
+function arraysIdentical(a, b) {
+  var i = a.length;
+  if (i != b.length) return false;
+  while (i--) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+};
+
+function arraysDuplicateCheck(list, a) {
+  var i = list.length;
+  while (i--) {
+    if (arraysIdentical(list[i], a)) return true;
+  }
+  return false;
 }
