@@ -1,6 +1,9 @@
 module.exports = {BLMThunderPps, SpsScalar, GcdCalc}
 const fd = require('./Damage')
 
+/**
+ * Find the potency per second (pps) of the ideal rotation at a given level and spell speed.
+ */
 function BLMThunderPps (sps, lvl) {
   switch(lvl) {
     case 70:
@@ -91,7 +94,9 @@ function newBLMThunderPps_pre72(sps) {
   let time = nCycles*120; 
   return potency/time;
 }
-
+/**
+ * Developed from Furst's BLM PPS Model. Main idea: it takes 30-2gcd time of ice/fire spells to generate t3 and xeno, since using them takes the total to 30s.
+ */
 //new model for 7.2 rework
 function newBLMThunderPps(sps) {  
   let fastF3B3 = 0.7*290;
@@ -112,7 +117,6 @@ function newBLMThunderPps(sps) {
 
   let baseTime = 4*(13*Gcd); // why are we doing 4 loops? vestigial, it doesn't matter.
   // B3 B4 Para F3p 6F4 Para Desp FS = 13 GCDs
-  // baseTime += 1*fastB3F3Clips + 1*fastB3F3ClipsLL;
 
   let cycleTime = (20/0.85 + 100) //20 seconds spent under LL
   cycleTime += -(120/MFCd)*(9*Gcd) //Assume 6F4 + Para + Desp + FS, no F3p
@@ -194,8 +198,7 @@ function newBLMThunderPps80(sps) {
   let Gcd = GcdCalc(2.5, sps, false, 100);
 
   let baseTime = 4*(11*Gcd); // why are we doing 4 loops? vestigial, it doesn't matter.
-  // B3 B4 Para F3p 6F4 Para Desp = 12 GCDs
-  // baseTime += 1*fastB3F3Clips + 1*fastB3F3ClipsLL;
+  // B3 B4 F3 7F4 Desp = 11 GCDs
 
   let cycleTime = (20/0.85 + 100); //20 seconds spent under LL
   cycleTime += -(120/MFCd)*(8*Gcd); //Assume 7F4 + Desp
@@ -232,6 +235,7 @@ function newBLMThunderPps70(sps) {
   let Gcd = GcdCalc(2.5, sps, false, 100)
 
   let baseTime = 4*(10*Gcd); // why are we doing 4 loops? vestigial, it doesn't matter.
+  // B3 B4 F3 7F4 = 10 GCDs
 
   let cycleTime = (20/0.85 + 100) //20 seconds spent under LL
   cycleTime += -(120/MFCd)*(7*Gcd) //Assume 7F4
