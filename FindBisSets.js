@@ -23,7 +23,7 @@ const LOGNUM = 100; // log every LOGNUM sets, or every 1% of progress, whichever
 * Finally, outputs all the sets within BISTHRESH of the best, using an update of Furst's model.
 * Allowing full overmelds impacts performance severely.
 */
-function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicMeldOverride, useTomes = false, minTomes = 0, maxTomes = 10^6){
+function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicMeldOverride, pbonus=5, useTomes = false, minTomes = 0, maxTomes = 10^6){
   var baseint = 0;
   var eno = 1.0;
   var basestats = [0, 0, 0, 0];
@@ -94,7 +94,7 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicM
     for(let meld of melds){
       for (let food of foodList){
         const sps = totalStats(gearSet, meld, food, 'SS', smeldVal); 
-        const mult = setDamage(gearSet, meld, food, lvl, eno, smeldVal);
+        const mult = setDamage(gearSet, meld, food, lvl, eno, smeldVal, pbonus);
         if (!bisSets.has(sps) || bisBests.get(sps) < mult) {
           bisBests.set(sps, mult);
           bisSets.set(sps, gearSet);
@@ -111,12 +111,12 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicM
   spsVals.sort(function(a,b) {return a-b});
   var bestDmg = 0;
   for (let sps of spsVals){
-    var currDmg = setDamage(bisSets.get(sps), bisMelds.get(sps), bisFoods.get(sps), lvl, eno, smeldVal);
+    var currDmg = setDamage(bisSets.get(sps), bisMelds.get(sps), bisFoods.get(sps), lvl, eno, smeldVal, pbonus);
     if (currDmg > bestDmg) bestDmg = currDmg;
   }
   var setList = [];
   for (let sps of spsVals){
-    var currDmg = setDamage(bisSets.get(sps), bisMelds.get(sps), bisFoods.get(sps), lvl, eno, smeldVal);
+    var currDmg = setDamage(bisSets.get(sps), bisMelds.get(sps), bisFoods.get(sps), lvl, eno, smeldVal, pbonus);
     if (currDmg > bestDmg*bisThresh){
       setList.push([bisSets.get(sps), bisMelds.get(sps), bisFoods.get(sps), currDmg, sps]);
     }
@@ -133,7 +133,7 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicM
   for(let i in setList){
     var stats = getStats(setList[i][0], setList[i][1], setList[i][2], smeldVal);
     output.push([setList[i][4], setList[i][3], 100.0*setList[i][3]/bestDmg, fp.GcdCalc(2.5, setList[i][4], false, lvl)
-      ,stats[0], stats[1], stats[2], setList[i][0].int, meldToString(setList[i][1], bigMeldFlag, meldMult), setList[i][2].name, setList[i][0].pieces.toString()]);
+      ,stats[0], stats[1], stats[2], Math.floor(setList[i][0].int * (1+(pbonus/100))), meldToString(setList[i][1], bigMeldFlag, meldMult), setList[i][2].name, setList[i][0].pieces.toString()]);
   }
   return output;
 }
@@ -156,7 +156,7 @@ function totalStats(gearset, meld, food, statName, smeldVal){
 /**
  * Finds the damage of a given set and melds at a supplied level.
  */
-function setDamage(gearset, meld, food, lvl, eno, smeldVal){
+function setDamage(gearset, meld, food, lvl, eno, smeldVal, pbonus){
   //console.log('setDamage food:', food)
   var det = totalStats(gearset, meld, food, 'Det', smeldVal);
   var dh = totalStats(gearset, meld, food, 'DH', smeldVal);
@@ -170,7 +170,7 @@ function setDamage(gearset, meld, food, lvl, eno, smeldVal){
   var jobMod = BLM_JOBMOD; // TODO figure this one out?
   //console.log(ppst);
   //console.log('Calling Damage with [' + ppst + ', ' + wd + ', ' + jobMod + ', ' + int + ', ' + det + ', ' + crit + ', ' + dh + ', ' + 90 + '].');
-  return fd.Damage(ppst, wd, jobMod, int, det, crit, dh, lvl, eno);
+  return fd.Damage(ppst, wd, jobMod, int, det, crit, dh, lvl, eno, pbonus);
 }
 
 function meldToString(meld, bigMeldFlag, meldMult){

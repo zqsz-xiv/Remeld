@@ -1,16 +1,21 @@
 // BLM Traits
 const maimAndMend = 1.3;
 
-/**
- * Damage Formula
- */
 
 module.exports = {Damage, CalcCritDamage, CalcCritRate, CalcDHRate, CalcDetDamage, getLvlMod}
 
-function Damage(Potency, WD, JobMod, MainStat, Det, Crit, DH, lvl, eno) {
+/**
+ * Damage Formula
+ * Find damage of an attack with given potency and character stats.
+ * Party bonus is a percentage bonus to main stat (5% for 8 man raid)
+ */
+function Damage(Potency, WD, JobMod, MainStat, Det, Crit, DH, lvl, eno, pbonus) {
   const { main, sub, M, div } = getLvlMod(lvl);
-  //TODO: implement party bonus. Per Dia, value of DET is sensitive to party bonus due to damage formula order of operations
-  let Damage = Math.floor(Potency * (WD + Math.floor(main * JobMod / 1000)) * (100 + Math.floor((MainStat - main) * M / main)) / 100);
+  
+  //Apply party bonus. Per Dia, value of DET is sensitive to party bonus due to damage formula order of operations
+  MainStat_p = MainStat*(1 + (pbonus/100));
+
+  let Damage = Math.floor(Potency * (WD + Math.floor(main * JobMod / 1000)) * (100 + Math.floor((MainStat_p - main) * M / main)) / 100);
   Damage = Math.floor(Damage * (1000 + Math.floor(140 * (Det - main) / div)) / 1000);
   Damage = Math.floor(Damage / 100);
   Damage = Math.floor(Damage * maimAndMend); //BLM traits

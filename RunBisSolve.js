@@ -18,18 +18,21 @@ const setStatDedup = false;
 //Force meld size to be +72 for solving legacy ultimates with a relic weapon
 const relicMeldOverride = false;
 
+//Percentage point bonus to main stat from party bonus. 8 main raid content uses 5%, change to 4% if solving for Criterion dungeon BiS
+const pBonus = 5;
+
 //Cull gearsets based on the total amount of tomes. Tomes are an optional rightmost column  of the gear input file
-const useTomes = true;
+const useTomes = false;
 const minTomes = 750;
 const maxTomes = 900;
 
 //Path to input file
-const file_input = './inputs_7.4/7.2 full BiS Input tome test.csv';
+const file_input = './inputs_7.4/7.2 full BiS Input.csv';
 var file_output = file_input.replaceAll("input", "output");
 file_output = file_output.replaceAll("Input", "Output");
 
 
-var output = f.findBisSets(file_input, lvl, thresh, bigmeldflag, setStatDedup, relicMeldOverride, useTomes, minTomes, maxTomes)
+var output = f.findBisSets(file_input, lvl, thresh, bigmeldflag, setStatDedup, relicMeldOverride, pBonus, useTomes, minTomes, maxTomes)
 
 var out_csv = output
       .map((item) => {
