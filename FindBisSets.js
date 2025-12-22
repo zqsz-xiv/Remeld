@@ -23,7 +23,7 @@ const LOGNUM = 100; // log every LOGNUM sets, or every 1% of progress, whichever
 * Finally, outputs all the sets within BISTHRESH of the best, using an update of Furst's model.
 * Allowing full overmelds impacts performance severely.
 */
-function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicMeldOverride, pbonus=5, useTomes = false, minTomes = 0, maxTomes = 10^6){
+function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicMeldOverride, pbonus=5, useTomes = false, minTomes = 0, maxTomes = 10^6, minTokens = 0, maxTokens = 64){
   var baseint = 0;
   var eno = 1.0;
   var basestats = [0, 0, 0, 0];
@@ -76,9 +76,9 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicM
   }
 
   if (setStatDedup) {
-    var [gearSets, foodList] = loadGearSets_StatDedup(filename, baseint, basestats, false, smeldVal, meldMult, useTomes, minTomes, maxTomes); 
+    var [gearSets, foodList] = loadGearSets_StatDedup(filename, baseint, basestats, false, smeldVal, meldMult, useTomes, minTomes, maxTomes, minTokens, maxTokens); 
   } else {
-    var [gearSets, foodList] = loadGearSets(filename, baseint, basestats, false, smeldVal, meldMult, useTomes, minTomes, maxTomes); 
+    var [gearSets, foodList] = loadGearSets(filename, baseint, basestats, false, smeldVal, meldMult, useTomes, minTomes, maxTomes, minTokens, maxTokens); 
   }
 
   console.log('Loaded ' + gearSets.length + ' gearsets.');
@@ -192,7 +192,7 @@ const cartesian =
  * Name, Slot, Int, Weapon Damage, Meld Slots, Small Meld Slots, 
  * allowFullOvermelds = true, allows FULL OVERMELDS i.e. put all the materia to the secondary stat even if it overflows
  */
-function loadGearSets(filename, baseint, basestats, allowFullOvermelds, smeldVal, meldMult, useTomes, minTomes, maxTomes){
+function loadGearSets(filename, baseint, basestats, allowFullOvermelds, smeldVal, meldMult, useTomes, minTomes, maxTomes, minTokens, maxTokens){
 
   var data = fs.readFileSync(filename)
     .toString() // convert Buffer to string
@@ -206,7 +206,10 @@ function loadGearSets(filename, baseint, basestats, allowFullOvermelds, smeldVal
     if (data[i][0] != 'Name'){
       const piece = new Piece(data[i][0], data[i][1], parseInt(data[i][2]), parseInt(data[i][3]), parseInt(data[i][4]),
       parseInt(data[i][5]), data[i][6], parseInt(data[i][7]), data[i][8], parseInt(data[i][9]), smeldVal, meldMult);
-      if (useTomes) piece.tomes = parseInt(data[i][10]);
+      if (useTomes) {
+        piece.tomes = parseInt(data[i][10]);
+        piece.tokens = parseInt(data[i][11]);
+      }
       if (!pieces.has(piece.slot)) pieces.set(piece.slot, []);
       pieces.get(piece.slot).push(piece);
       if (allowFullOvermelds && piece.canOvermeld()){
@@ -246,8 +249,10 @@ function loadGearSets(filename, baseint, basestats, allowFullOvermelds, smeldVal
     var auxSets = [];
     preSets.forEach(preSet => {
       var setTomes = 0;
+      var setTokens = 0;
       preSet.forEach(piece => setTomes = setTomes + piece.tomes);
-      if (setTomes >= minTomes && setTomes <= maxTomes) auxSets.push(preSet);
+      preSet.forEach(piece => setTokens = setTokens + piece.tokens);
+      if (setTomes >= minTomes && setTomes <= maxTomes && setTokens >= minTokens && setTokens <= maxTokens) auxSets.push(preSet);
     });
     preSets = auxSets;
     console.log('Sets satisfying tomes constraints: ' + preSets.length);

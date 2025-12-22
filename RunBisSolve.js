@@ -21,18 +21,25 @@ const relicMeldOverride = false;
 //Percentage point bonus to main stat from party bonus. 8 main raid content uses 5%, change to 4% if solving for Criterion dungeon BiS
 const pBonus = 5;
 
-//Cull gearsets based on the total amount of tomes. Tomes are an optional rightmost column  of the gear input file
-const useTomes = false;
-const minTomes = 750;
-const maxTomes = 900;
+//Cull gearsets based on the total amount of tomes and normal raid tokens. Tomes and tokens are two optional columns at the end of the gear input file
+const useTomes = true;
+const minTomes = 0;
+const maxTomes = 1800;
+const minTokens = 0;
+const maxTokens = 16;
+
 
 //Path to input file
-const file_input = './inputs_7.4/7.2 full BiS Input.csv';
+const file_input = './inputs_7.4/7.4 crafted BiS Input 4 week loot 1 overmeld no crit tome.csv';
 var file_output = file_input.replaceAll("input", "output");
 file_output = file_output.replaceAll("Input", "Output");
 
+const startTime = new Date();
+console.log('Run start: ' + startTime.toLocaleString());
 
-var output = f.findBisSets(file_input, lvl, thresh, bigmeldflag, setStatDedup, relicMeldOverride, pBonus, useTomes, minTomes, maxTomes)
+
+var output = f.findBisSets(file_input, lvl, thresh, bigmeldflag, setStatDedup, relicMeldOverride, pBonus, useTomes, minTomes, maxTomes, minTokens, maxTokens)
+
 
 var out_csv = output
       .map((item) => {
@@ -47,3 +54,8 @@ var out_csv = output
 
 console.log('Writing output to: ' + file_output);
 fs.writeFile(file_output, out_csv, { flag: 'w' }, err => {});
+
+const endTime = new Date();
+console.log('Run end: ' + endTime.toLocaleString());
+const durationMs = (endTime - startTime)/1000;
+console.log('Duration: ' + durationMs);
