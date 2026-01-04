@@ -103,14 +103,14 @@ function newBLMThunderPps(sps) {
   let coldB3 = 290;
   let B4 = 300;
   let Xeno = 890;
-  let F3P = 1.8*290;
+  let AF1F3P = 1.4*290;
   let F4 = 1.8*300;
   let Desp = 1.8*350;
   let Para = 540;
   let HT = 150;
   let HTDot = 60;
   var FS = 1.8*500;
-  let F4Rotation = fastF3B3 + B4 + F3P + 2*Para + F4 * 6 + Desp + FS;
+  let F4Rotation = fastF3B3 + B4 + AF1F3P + 2*Para + F4 * 6 + Desp + FS;
   let MFCd = 100;
 
   let Gcd = GcdCalc(2.5, sps, false, 100)
