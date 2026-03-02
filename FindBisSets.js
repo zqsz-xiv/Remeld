@@ -108,22 +108,22 @@ async function findBisSets(
 
   const numThreads = numWorkers === undefined ? Math.max(1, os.cpus().length - 1) : (numWorkers <= 1 ? 0 : numWorkers);
   if (numThreads > 0) {
-    // Workers run in separate V8 isolates and don't share memory with the main thread, so we need
-    // to serialize them to simple objects. Replacing the `GearSet` class with a binary format that
-    // is compatible with SharedArrayBuffers would remove this memory overhead.
-    const serializedGearSets = gearSets.map((g) => g.serialized());
+    // Workers run in separate V8 isolates and don't share memory with the main thread, so the node
+    // runtime automatically deep copies them when passed to child workers.
+    // If this memory overhead becomes a problem, replacing the `GearSet` class with a binary format
+    // that is compatible with SharedArrayBuffers would resolve the issue.
     const logStep = Math.max(LOGNUM, Math.floor(gearSets.length / 100));
-    const chunkSize = Math.ceil(serializedGearSets.length / numThreads);
+    const chunkSize = Math.ceil(gearSets.length / numThreads);
     const workerPath = path.join(__dirname, 'FindBisSetsWorker.js');
     const params = { lvl, eno, smeldVal, pbonus, logInterval: Math.max(1, Math.floor(chunkSize / 50)) };
     const workerPromises = [];
     const workerProgress = [];
     let nextLogAt = logStep;
-    for (let start = 0; start < serializedGearSets.length; start += chunkSize) {
+    for (let start = 0; start < gearSets.length; start += chunkSize) {
       // Distribute an even portion of the search space to each worker thread.
-      const end = Math.min(start + chunkSize, serializedGearSets.length);
+      const end = Math.min(start + chunkSize, gearSets.length);
       if (start >= end) break;
-      const chunk = serializedGearSets.slice(start, end);
+      const chunk = gearSets.slice(start, end);
       workerProgress.push(0);
       const workerId = workerPromises.length;
       workerPromises.push(
@@ -563,20 +563,11 @@ class GearSet {
       this.stats[i] += gs.stats[i] - basestats[i];
     }
   }
-  // Serialization and deserialization methods necessary for sending GearSet objects
-  // to/from a worker thread.
-  // These methods do NOT deep copy the contents of child arrays: the node runtime performs
-  // deep clones when sending objects to worker threads, and we assume that no more mutations are
-  // performed at this point, so it's safe to avoid cloning the child arrays.
-  serialized() {
-    return {
-      int: this.int,
-      wd: this.wd,
-      stats: this.stats,
-      pieces: this.pieces,
-      pieceMeldConfigs: this.pieceMeldConfigs,
-    };
-  }
+  // Deserialization method necessary for receiving GearSet objects in a worker thread.
+  // When the node runtime sends an object to a thread, it deep copies its attributes and produces
+  // a simple object with no prototype, so this method is necessary to reconstruct it.
+  // We assume that no more mutations are performed on this object, so it's safe to not implement
+  // custom serialization that clones the child arrays.
   static deserialize(obj) {
     const gearSet = new GearSet(obj.int, obj.stats);
     gearSet.wd = obj.wd;

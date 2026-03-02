@@ -199,6 +199,7 @@ function newBLMThunderPps90(sps) {
   return potency/time;
 }
 
+
 //Level 80 damage model
 function newBLMThunderPps80(sps) {  
   let fastF3B3 = 0.7*290;
