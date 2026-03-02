@@ -1,22 +1,42 @@
-module.exports = {BLMThunderPps, SpsScalar, GcdCalc}
+module.exports = {BLMThunderPps, SpsScalar, GcdCalc, setLevelToSolve}
 const fd = require('./Damage')
+
+const BLM_THUNDER_PPS_CACHE = new Map();
+
+// Since the sim is only ever run for a single level at a time, we can pre-set the ppsFn
+// to minimize the number of branches taken in BLMThunderPps.
+// setLevelToSolve should be called once at the start of the program before any solving is done,
+// and at the start of every worker thread initialization (since global module state is not shared).
+let ppsFn = undefined;
+function setLevelToSolve(lvl) {
+  ppsFn = (
+    lvl === 70
+      ? newBLMThunderPps70
+      : (
+        lvl === 80
+        ? newBLMThunderPps80
+        : (
+          lvl === 90
+          ? newBLMThunderPps90
+          : newBLMThunderPps
+        )
+      )
+  );
+}
 
 /**
  * Find the potency per second (pps) of the ideal rotation at a given level and spell speed.
  */
-function BLMThunderPps (sps, lvl) {
-  switch(lvl) {
-    case 70:
-      return newBLMThunderPps70(sps);
-    case 80:
-      return newBLMThunderPps80(sps);
-    case 90:
-      return newBLMThunderPps90(sps);
-    case 100:
-      return newBLMThunderPps(sps);
-    default:
-      return newBLMThunderPps(sps); 
+function BLMThunderPps(sps) {
+  // Since the sim is only ever run for a single level at a time, we can re-use PPS calculations for
+  // a given sps without worrying about differences due to level.
+  const cacheEntry = BLM_THUNDER_PPS_CACHE.get(sps);
+  if (cacheEntry !== undefined) {
+    return cacheEntry;
   }
+  const result = ppsFn(sps);
+  BLM_THUNDER_PPS_CACHE.set(sps, result);
+  return result;
 }
 
 /*
@@ -178,7 +198,6 @@ function newBLMThunderPps90(sps) {
   let time = nCycles*120; 
   return potency/time;
 }
-
 
 //Level 80 damage model
 function newBLMThunderPps80(sps) {  

@@ -1,8 +1,19 @@
 const f = require('./FindBisSets');
 const fs = require("fs");
+const path = require("path");
+
+// Ensure we always see errors from worker threads and don't exit silently.
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled rejection:', reason);
+  process.exitCode = 1;
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  process.exit(1);
+});
 
 // Level to solve gear for
-const lvl = 100;
+const lvl = 90;
 
 // Sets below threshold percentage will not be included in final output
 const thresh = 0.90;
@@ -19,10 +30,10 @@ const setStatDedup = false;
 const relicMeldOverride = false;
 
 //Percentage point bonus to main stat from party bonus. 8 main raid content uses 5%, change to 4% if solving for Criterion dungeon BiS
-const pBonus = 5;
+const pBonus = 4;
 
 //Cull gearsets based on the total amount of tomes and normal raid tokens. Tomes and tokens are two optional columns at the end of the gear input file
-const useTomes = true;
+const useTomes = false;
 const minTomes = 0;
 const maxTomes = 1800;
 const minTokens = 0;
@@ -30,32 +41,38 @@ const maxTokens = 16;
 
 
 //Path to input file
-const file_input = './inputs_7.4/7.4 crafted BiS Input 4 week loot 1 overmeld no crit tome.csv';
-var file_output = file_input.replaceAll("input", "output");
-file_output = file_output.replaceAll("Input", "Output");
+const fileInput = './inputs_7.4/7.4 AloAlo BiS Input.csv';
+var fileOutput = fileInput.replaceAll("input", "output");
+fileOutput = fileOutput.replaceAll("Input", "Output");
+
+// Leave this undefined to automatically set numWorkers based on the number of available cores
+// on your computer. Set to 1 to make the solver run single-threaded.
+const numWorkers = undefined;
 
 const startTime = new Date();
-console.log('Run start: ' + startTime.toLocaleString());
+console.error('Run start: ' + startTime.toLocaleString());
 
-
-var output = f.findBisSets(file_input, lvl, thresh, bigmeldflag, setStatDedup, relicMeldOverride, pBonus, useTomes, minTomes, maxTomes, minTokens, maxTokens)
-
-
-var out_csv = output
-      .map((item) => {
-      
-        // Here item refers to a row in that 2D array
-        var row = item;
-        
-        // Now join the elements of row with "," using join function
-        return row.join(",");
-      }) // At this point we have an array of strings
+// Top-level async function wrapper is necessary to run worker threads.
+(async () => {
+  try {
+    let output = await f.findBisSets(fileInput, lvl, thresh, bigmeldflag, setStatDedup, relicMeldOverride, pBonus, useTomes, minTomes, maxTomes, minTokens, maxTokens, numWorkers);
+    let outCsv = output
+      .map((item) => item.join(","))
       .join("\n");
 
-console.log('Writing output to: ' + file_output);
-fs.writeFile(file_output, out_csv, { flag: 'w' }, err => {});
+    console.error('Writing output to: ' + fileOutput);
+    const outDir = path.dirname(fileOutput);
+    // Automatically make the output directory if it does not exist
+    if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
+    fs.writeFile(fileOutput, outCsv, { flag: 'w' }, err => { if (err) console.error('Write failed:', err.message); });
 
-const endTime = new Date();
-console.log('Run end: ' + endTime.toLocaleString());
-const durationMs = (endTime - startTime)/1000;
-console.log('Duration: ' + durationMs);
+    const endTime = new Date();
+    console.error('Run end: ' + endTime.toLocaleString());
+    const durationMs = (endTime - startTime)/1000;
+    console.error('Duration: ' + durationMs);
+  } catch (err) {
+    console.error('Error:', err.message || err);
+    if (err.stack) console.error(err.stack);
+    process.exitCode = 1;
+  }
+})();

@@ -6,9 +6,10 @@
 //const MELDVAL = 36;
 //const smeldVal = 12;
 
-module.exports = {findBisSets}
-
 const fs = require("fs");
+const path = require("path");
+const { Worker } = require("worker_threads");
+const os = require("os");
 const fp = require('./NewBLMPps');
 const fm = require('./FindMeldSets');
 const fd = require('./Damage')
@@ -23,7 +24,21 @@ const LOGNUM = 100; // log every LOGNUM sets, or every 1% of progress, whichever
 * Finally, outputs all the sets within BISTHRESH of the best, using an update of Furst's model.
 * Allowing full overmelds impacts performance severely.
 */
-function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicMeldOverride, pbonus=5, useTomes = false, minTomes = 0, maxTomes = 10^6, minTokens = 0, maxTokens = 64){
+async function findBisSets(
+  filename,
+  lvl,
+  bisThresh,
+  bigMeldFlag,
+  setStatDedup,
+  relicMeldOverride,
+  pbonus = 5,
+  useTomes = false,
+  minTomes = 0,
+  maxTomes = 10 ** 6,
+  minTokens = 0,
+  maxTokens = 64,
+  numWorkers
+){
   var baseint = 0;
   var eno = 1.0;
   var basestats = [0, 0, 0, 0];
@@ -88,25 +103,103 @@ function findBisSets(filename, lvl, bisThresh, bigMeldFlag, setStatDedup, relicM
   var bisBests = new Map();
   var bisMelds = new Map();
   var bisFoods = new Map();
-  var logCount = 0;
-  gearSets.forEach(gearSet => {
-    const melds = fm.findMeldSets(gearSet);
-    for(let meld of melds){
-      for (let food of foodList){
-        const sps = totalStats(gearSet, meld, food, 'SS', smeldVal); 
-        const mult = setDamage(gearSet, meld, food, lvl, eno, smeldVal, pbonus);
-        if (!bisSets.has(sps) || bisBests.get(sps) < mult) {
-          bisBests.set(sps, mult);
-          bisSets.set(sps, gearSet);
-          bisMelds.set(sps, meld);
-          bisFoods.set(sps, food);
+
+  fp.setLevelToSolve(lvl);
+
+  const numThreads = numWorkers === undefined ? Math.max(1, os.cpus().length - 1) : (numWorkers <= 1 ? 0 : numWorkers);
+  if (numThreads > 0) {
+    // Workers run in separate V8 isolates and don't share memory with the main thread, so we need
+    // to serialize them to simple objects. Replacing the `GearSet` class with a binary format that
+    // is compatible with SharedArrayBuffers would remove this memory overhead.
+    const serializedGearSets = gearSets.map((g) => g.serialized());
+    const logStep = Math.max(LOGNUM, Math.floor(gearSets.length / 100));
+    const chunkSize = Math.ceil(serializedGearSets.length / numThreads);
+    const workerPath = path.join(__dirname, 'FindBisSetsWorker.js');
+    const params = { lvl, eno, smeldVal, pbonus, logInterval: Math.max(1, Math.floor(chunkSize / 50)) };
+    const workerPromises = [];
+    const workerProgress = [];
+    let nextLogAt = logStep;
+    for (let start = 0; start < serializedGearSets.length; start += chunkSize) {
+      // Distribute an even portion of the search space to each worker thread.
+      const end = Math.min(start + chunkSize, serializedGearSets.length);
+      if (start >= end) break;
+      const chunk = serializedGearSets.slice(start, end);
+      workerProgress.push(0);
+      const workerId = workerPromises.length;
+      workerPromises.push(
+        new Promise((resolve, reject) => {
+          const worker = new Worker(workerPath, {
+            workerData: { gearSetsChunk: chunk, foodList, params, workerId }
+          });
+          worker.on('message', (msg) => {
+            if (!msg || typeof msg !== 'object') return;
+            if (msg.type === 'progress' || msg.type === 'done') {
+              workerProgress[workerId] = msg.processed;
+              const total = workerProgress.reduce((a, b) => a + b, 0);
+              while (total >= nextLogAt) {
+                console.log(`Processed ${nextLogAt} sets...`);
+                nextLogAt += logStep;
+              }
+              if (msg.type === 'done') {
+                if (total > 0 && total !== nextLogAt - logStep) {
+                  console.log(`Processed ${total} sets...`);
+                }
+                resolve(msg.results);
+              }
+            }
+          });
+          worker.on('error', (err) => {
+            console.error('Worker error:', err.message || err);
+            reject(err);
+          });
+          worker.on('exit', (code) => {
+            if (code !== 0) {
+              reject(new Error('Worker stopped with exit code ' + code));
+            }
+          });
+        })
+      );
+    }
+    console.log(`Using ${workerPromises.length} worker(s).`);
+    try {
+      const results = await Promise.all(workerPromises);
+      for (const part of results) {
+        for (const { sps, mult, gearSet, meld, food } of part) {
+          if (!bisBests.has(sps) || bisBests.get(sps) < mult) {
+            bisBests.set(sps, mult);
+            bisSets.set(sps, gearSet);
+            bisMelds.set(sps, meld);
+            bisFoods.set(sps, food);
+          }
         }
       }
+    } catch (err) {
+      console.error(`Worker failed: ${err.message || err}`);
+      throw err;
     }
-    logCount++;
-    
-    if (logCount % Math.max(LOGNUM,Math.floor(gearSets.length / 100)) == 0) console.log('Processed ' + logCount + ' sets...');
-  });
+  } else {
+    // Single-threaded approach
+    let logCount = 0;
+    gearSets.forEach(gearSet => {
+      const melds = fm.findMeldSets(gearSet);
+      for (let meld of melds){
+        for (let food of foodList){
+          const sps = totalStats(gearSet, meld, food, 'SS', smeldVal);
+          const mult = setDamage(gearSet, meld, food, lvl, eno, smeldVal, pbonus);
+          if (!bisSets.has(sps) || bisBests.get(sps) < mult) {
+            bisBests.set(sps, mult);
+            bisSets.set(sps, gearSet);
+            bisMelds.set(sps, meld);
+            bisFoods.set(sps, food);
+          }
+        }
+      }
+      logCount++;
+      if (logCount % Math.max(LOGNUM,Math.floor(gearSets.length / 100)) == 0) {
+        console.log(`Processed ${logCount} sets...`);
+      }
+    });
+  }
   var spsVals = Array.from(bisSets.keys());
   spsVals.sort(function(a,b) {return a-b});
   var bestDmg = 0;
@@ -164,7 +257,7 @@ function setDamage(gearset, meld, food, lvl, eno, smeldVal, pbonus){
   var ss = totalStats(gearset, meld, food, 'SS', smeldVal);
 
 
-  var ppst = fp.BLMThunderPps(ss, lvl); // Using own model
+  var ppst = fp.BLMThunderPps(ss); // Using own model
   var wd = gearset.wd;
   var int = gearset.int;
   var jobMod = BLM_JOBMOD; // TODO figure this one out?
@@ -470,6 +563,27 @@ class GearSet {
       this.stats[i] += gs.stats[i] - basestats[i];
     }
   }
+  // Serialization and deserialization methods necessary for sending GearSet objects
+  // to/from a worker thread.
+  // These methods do NOT deep copy the contents of child arrays: the node runtime performs
+  // deep clones when sending objects to worker threads, and we assume that no more mutations are
+  // performed at this point, so it's safe to avoid cloning the child arrays.
+  serialized() {
+    return {
+      int: this.int,
+      wd: this.wd,
+      stats: this.stats,
+      pieces: this.pieces,
+      pieceMeldConfigs: this.pieceMeldConfigs,
+    };
+  }
+  static deserialize(obj) {
+    const gearSet = new GearSet(obj.int, obj.stats);
+    gearSet.wd = obj.wd;
+    gearSet.pieces = obj.pieces;
+    gearSet.pieceMeldConfigs = obj.pieceMeldConfigs;
+    return gearSet;
+  }
 }
 
 
@@ -503,3 +617,5 @@ function arraysDuplicateCheck(list, a) {
   }
   return false;
 }
+
+module.exports = { findBisSets, totalStats, setDamage, GearSet }
